@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Music Mirror · 지금 너에게 어울리는 노래 한 곡</title>
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet" />
+<style>
+  :root{--bg:#0b0b14;--panel:rgba(255,255,255,.06);--line:rgba(255,255,255,.12);--text:#f3f3f8;--sub:#a3a3b8;--accent:#a78bfa;--accent2:#f472b6;--yt:#ff3b3b;--radius:20px}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Pretendard,-apple-system,"Malgun Gothic",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+  .blob{position:fixed;border-radius:50%;filter:blur(90px);opacity:.45;z-index:-1;animation:float 18s ease-in-out infinite}
+  .b1{width:480px;height:480px;background:#7c3aed;top:-120px;left:-120px}
+  .b2{width:420px;height:420px;background:#db2777;bottom:-140px;right:-100px;animation-delay:-6s}
+  .b3{width:300px;height:300px;background:#0ea5e9;top:40%;left:45%;opacity:.25;animation-delay:-12s}
+  @keyframes float{50%{transform:translate(40px,30px) scale(1.08)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  header{display:flex;align-items:center;justify-content:space-between;padding:22px 32px;gap:12px;flex-wrap:wrap}
+  .logo{display:flex;align-items:center;gap:12px;font-weight:800;font-size:22px;letter-spacing:-.5px}
+  .logo .disc{width:38px;height:38px;border-radius:50%;background:conic-gradient(from 0deg,var(--accent),var(--accent2),#38bdf8,var(--accent));position:relative;animation:spin 6s linear infinite}
+  .logo .disc::after{content:"";position:absolute;inset:14px;border-radius:50%;background:var(--bg)}
+  .logo small{display:block;font-size:12px;font-weight:500;color:var(--sub);letter-spacing:0}
+  .status{font-size:13px;color:var(--sub);background:var(--panel);border:1px solid var(--line);padding:9px 14px;border-radius:14px}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#f87171;margin-right:6px}
+  .dot.on{background:#4ade80;box-shadow:0 0 10px #4ade80}
+
+  main{display:grid;grid-template-columns:minmax(320px,.9fr) minmax(380px,1.2fr);gap:24px;padding:0 32px 32px;max-width:1400px;margin:0 auto}
+  @media(max-width:960px){main{grid-template-columns:1fr;padding:0 16px 24px}header{padding:18px 16px}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);backdrop-filter:blur(20px);padding:22px}
+  .card h2{font-size:15px;color:var(--sub);font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+  .btn{border:none;cursor:pointer;font-family:inherit;font-weight:700;border-radius:14px;transition:.2s}
+  .btn-ghost{background:var(--panel);color:var(--text);border:1px solid var(--line);padding:10px 16px;font-size:14px}
+  .btn-ghost:hover{background:rgba(255,255,255,.12)}
+
+  /* 카메라 */
+  .cam-wrap{position:relative;border-radius:16px;overflow:hidden;aspect-ratio:4/3;background:#000}
+  video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block}
+  .cam-wrap::before{content:"";position:absolute;inset:0;border-radius:16px;padding:2px;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;z-index:2;pointer-events:none}
+  .cam-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:var(--sub);text-align:center;padding:20px}
+  .cam-placeholder .icon{font-size:48px}
+  .countdown{position:absolute;inset:0;display:none;align-items:center;justify-content:center;font-size:120px;font-weight:900;color:#fff;text-shadow:0 0 40px var(--accent);z-index:3}
+  .flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:4}
+  .flash.go{animation:flash .5s}
+  @keyframes flash{0%{opacity:.9}100%{opacity:0}}
+  .scan{position:absolute;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent2),transparent);box-shadow:0 0 20px var(--accent2);display:none;z-index:3;animation:scan 1.6s ease-in-out infinite}
+  @keyframes scan{0%{top:0}50%{top:calc(100% - 3px)}100%{top:0}}
+  .btn-main{width:100%;margin-top:16px;padding:16px;font-size:16px;color:#fff;background:linear-gradient(135deg,#7c3aed,#db2777);box-shadow:0 8px 30px rgba(219,39,119,.35)}
+  .btn-main:hover{transform:translateY(-2px);box-shadow:0 12px 36px rgba(219,39,119,.5)}
+  .btn-main:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+  /* 분석 결과 */
+  .empty{text-align:center;color:var(--sub);padding:60px 20px;line-height:1.8}
+  .empty .big{font-size:56px;margin-bottom:6px}
+  .spinner{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;margin-right:8px}
+  .profile{display:flex;gap:16px;align-items:flex-start;margin-bottom:16px}
+  .snap{width:84px;height:84px;border-radius:16px;object-fit:cover;transform:scaleX(-1);flex-shrink:0;border:2px solid var(--accent)}
+  .profile h3{font-size:19px;margin-bottom:6px;line-height:1.35}
+  .profile .desc{font-size:13px;color:var(--sub);line-height:1.6}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .tag{font-size:12px;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,.08);border:1px solid var(--line)}
+  .sw{width:18px;height:18px;border-radius:5px;border:1px solid rgba(255,255,255,.3);display:inline-block;vertical-align:middle}
+
+  /* 노래 + 플레이어 */
+  .player{position:relative;aspect-ratio:16/9;border-radius:18px;overflow:hidden;background:#000;margin-bottom:14px;animation:rise .5s both}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}}
+  .poster{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background-size:cover;background-position:center;cursor:pointer}
+  .poster::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.15),rgba(0,0,0,.6))}
+  .poster > *{position:relative}
+  .play-big{width:84px;height:84px;border-radius:50%;background:var(--yt);color:#fff;font-size:32px;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 40px rgba(255,59,59,.55);transition:.25s;padding-left:6px}
+  .poster:hover .play-big{transform:scale(1.1)}
+  .poster .hint{font-size:14px;font-weight:600;text-shadow:0 2px 10px #000}
+  .player iframe,.player #ytFrame{position:absolute;inset:0;width:100%;height:100%;border:0}
+  .song-info{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .song-info .title{font-size:24px;font-weight:800;letter-spacing:-.5px}
+  .song-info .artist{font-size:15px;color:var(--sub);margin-top:2px}
+  .meta{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .mini{font-size:11.5px;padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.08);color:var(--sub)}
+  .mini.ok{background:rgba(74,222,128,.15);color:#86efac}
+  .mini.no{background:rgba(251,191,36,.15);color:#fcd34d}
+  .reason{margin-top:12px;font-size:14px;line-height:1.6;color:#e4e4f0}
+  .side-btns{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+  .yt-link{display:inline-flex;align-items:center;gap:6px;background:rgba(255,59,59,.15);color:#ff8a8a;text-decoration:none;font-weight:700;font-size:12.5px;padding:8px 12px;border-radius:12px;border:1px solid rgba(255,59,59,.3);white-space:nowrap}
+  .yt-link:hover{background:rgba(255,59,59,.25)}
+  .mini.yt{background:rgba(255,59,59,.15);color:#fca5a5}
+  /* 측정 리포트 */
+  .measure{margin-top:14px;border:1px solid var(--line);border-radius:16px;background:rgba(0,0,0,.22);padding:12px 16px}
+  .measure summary{cursor:pointer;font-weight:700;font-size:14px;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .measure summary span{font-weight:500;font-size:12px;color:var(--sub)}
+  .m-expr{font-size:13px;margin:12px 0 10px;color:#e4e4f0}
+  .m-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  @media(max-width:700px){.m-grid{grid-template-columns:repeat(2,1fr)}}
+  .m-item{background:rgba(255,255,255,.04);border-radius:12px;padding:10px}
+  .m-top{display:flex;justify-content:space-between;font-size:12px;color:var(--sub);margin-bottom:6px}
+  .m-top b{color:var(--text);font-size:14px}
+  .m-item i{display:block;height:5px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;position:relative}
+  .m-item i b{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .m-item em{display:block;font-style:normal;font-size:11.5px;color:var(--sub);margin-top:5px}
+  .m-colors{display:flex;flex-wrap:wrap;gap:10px;align-items:center;font-size:12.5px;margin-top:12px;color:var(--sub)}
+  .m-colors span{display:flex;align-items:center;gap:5px;color:var(--text)}
+  .m-colors i{width:16px;height:16px;border-radius:5px;border:1px solid rgba(255,255,255,.3)}
+  /* 플레이리스트 */
+  .now{font-size:13px;color:var(--sub);margin:-4px 0 12px;min-height:18px;display:flex;align-items:center;gap:8px}
+  .now b{color:var(--text)} .now span{color:var(--sub)}
+  .eq{display:inline-flex;gap:2px;align-items:flex-end;height:12px}
+  .eq i{width:3px;background:var(--accent2);animation:eq 1s ease-in-out infinite}
+  .eq i:nth-child(2){animation-delay:-.3s}.eq i:nth-child(3){animation-delay:-.6s}
+  @keyframes eq{0%,100%{height:3px}50%{height:12px}}
+  .pl{border:1px solid var(--line);border-radius:16px;background:rgba(0,0,0,.22);overflow:hidden}
+  .pl-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap;background:linear-gradient(135deg,rgba(124,58,237,.18),rgba(219,39,119,.1))}
+  .pl-label{font-size:11px;letter-spacing:1.5px;color:#c4b5fd;font-weight:700}
+  .pl-title{font-size:18px;font-weight:800;margin-top:2px}
+  .pl-btns{display:flex;gap:8px;align-items:center}
+  .pl-play{background:var(--yt);color:#fff;padding:9px 14px;font-size:13px}
+  .pl-play:hover{background:#ff5555}
+  .track{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.05);transition:.2s;animation:rise .45s both}
+  .track:last-child{border-bottom:none}
+  .track:hover{background:rgba(255,255,255,.05)}
+  .track.playing{background:rgba(244,114,182,.12);box-shadow:inset 3px 0 0 var(--accent2)}
+  .track.main .t-no{color:#fbbf24}
+  .t-no{width:20px;text-align:center;font-weight:800;color:var(--sub);flex-shrink:0}
+  .t-thumb{width:64px;height:48px;border-radius:8px;background:#222 center/cover;flex-shrink:0}
+  .t-info{flex:1;min-width:0}
+  .t-title{font-weight:700;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .t-artist{font-weight:500;color:var(--sub);font-size:13px}
+  .t-sub{font-size:12.5px;color:#d4d4e4;margin-top:3px;line-height:1.45}
+  .t-sub b{color:#fbbf24;font-weight:700}
+  .track .meta{margin-top:5px}
+  .t-actions{display:flex;gap:6px;flex-shrink:0}
+  .t-play,.t-yt{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;text-decoration:none;border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);font-family:inherit}
+  .t-play{background:var(--yt);border-color:var(--yt);color:#fff;padding-left:2px}
+  .t-play:hover{transform:scale(1.08)}
+  /* 왜 이 노래일까 */
+  .why{margin-top:16px;border:1px solid var(--line);border-radius:16px;background:rgba(0,0,0,.22);overflow:hidden}
+  .why-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line)}
+  .why-head b{font-size:14.5px}
+  .score{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--sub)}
+  .score .ring{--p:0;width:42px;height:42px;border-radius:50%;background:conic-gradient(var(--accent2) calc(var(--p)*1%),rgba(255,255,255,.1) 0);display:flex;align-items:center;justify-content:center}
+  .score .ring span{width:32px;height:32px;border-radius:50%;background:#16161f;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:var(--text)}
+  .why-steps{padding:6px 16px 14px}
+  .why-step{display:flex;gap:12px;padding:10px 0;position:relative}
+  .why-step:not(:last-child)::after{content:"";position:absolute;left:15px;top:42px;bottom:-4px;width:2px;background:linear-gradient(var(--accent),transparent)}
+  .why-step .ic{flex-shrink:0;width:32px;height:32px;border-radius:10px;background:rgba(167,139,250,.15);display:flex;align-items:center;justify-content:center;font-size:15px}
+  .why-step h5{font-size:12.5px;color:#c4b5fd;margin-bottom:3px;font-weight:700}
+  .why-step p,.why-step li{font-size:13.5px;line-height:1.6;color:#e4e4f0}
+  .why-step ul{padding-left:16px}
+  .cmp{display:flex;flex-direction:column;gap:6px;margin-top:2px}
+  .cmp div{font-size:13px;line-height:1.5;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04)}
+  .cmp div b{color:var(--text)} .cmp div span{color:var(--sub)}
+  .dj{background:linear-gradient(135deg,rgba(124,58,237,.2),rgba(219,39,119,.15));border:1px solid rgba(167,139,250,.3);border-radius:16px;padding:14px 16px;margin-top:16px;display:flex;gap:12px;align-items:flex-start;line-height:1.6;font-size:14.5px}
+  .dj .play{flex-shrink:0;width:34px;height:34px;border-radius:50%;background:#fff;color:#7c3aed;font-size:13px}
+
+  /* 후속 요청 */
+  .chat{margin-top:18px;border-top:1px solid var(--line);padding-top:16px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+  .chip{font-size:13px;padding:7px 12px;border-radius:99px;background:transparent;color:var(--text);border:1px solid var(--line);cursor:pointer;font-family:inherit}
+  .chip:hover{border-color:var(--accent);color:#c4b5fd}
+  .chat-input{display:flex;gap:8px}
+  input{font-family:inherit;background:rgba(0,0,0,.35);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:14px;outline:none;width:100%}
+  input:focus{border-color:var(--accent)}
+  .btn-send{background:var(--accent);color:#1e1b4b;padding:0 18px}
+
+  /* AI 과정 패널 */
+  .llm{grid-column:1/-1}
+  .process{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+  @media(max-width:960px){.process{grid-template-columns:1fr}}
+  .box{background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:14px;padding:14px;font-size:13px;line-height:1.6;min-height:90px}
+  .box h4{font-size:13px;color:#c4b5fd;margin-bottom:8px}
+  .box ol{padding-left:18px}
+  .tool{margin-bottom:8px}
+  .tool code{background:rgba(167,139,250,.15);color:#ddd6fe;padding:2px 6px;border-radius:6px;font-size:12px}
+  .tool .found{color:var(--sub);font-size:12px}
+  .llm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+  .concept{padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid var(--line)}
+  .concept b{display:block;font-size:13.5px;margin-bottom:3px}
+  .concept span{font-size:12px;color:var(--sub);line-height:1.5}
+  .concept.used{border-color:rgba(74,222,128,.5)}
+  .concept.used b::after{content:" ✓";color:#4ade80}
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  .stat{padding:10px 14px;border-radius:12px;background:rgba(0,0,0,.3);font-size:13px;color:var(--sub)}
+  .stat b{color:var(--text);font-size:15px;margin-left:4px}
+  /* 얼굴 인식 오버레이 */
+  #overlay{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1);z-index:2;pointer-events:none}
+  .face-badge{position:absolute;left:12px;top:12px;z-index:3;font-size:14px;font-weight:700;padding:8px 13px;border-radius:12px;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);display:none}
+  .face-badge.warn{background:rgba(239,68,68,.85)}
+  .expr-bars{position:absolute;right:12px;bottom:12px;z-index:3;display:none;flex-direction:column;gap:4px;background:rgba(0,0,0,.55);backdrop-filter:blur(8px);padding:10px 12px;border-radius:12px;font-size:11.5px;min-width:150px}
+  .expr-row{display:flex;align-items:center;gap:6px}
+  .expr-row span{width:44px}
+  .expr-row i{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden;position:relative}
+  .expr-row i b{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .3s}
+
+  /* 설정 모달 */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+  .modal-bg.show{display:flex}
+  .modal{background:#15151f;border:1px solid var(--line);border-radius:22px;padding:26px;width:min(480px,100%)}
+  .modal h3{font-size:19px;margin-bottom:4px}
+  .modal .desc{color:var(--sub);font-size:13px;margin-bottom:18px;line-height:1.6}
+  .field{margin-bottom:16px}
+  .field label{display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:6px}
+  .field label em{font-style:normal;color:var(--sub);font-weight:400}
+  .key-row{display:flex;gap:6px}
+  .key-row button{flex-shrink:0;padding:0 12px}
+  select{font-family:inherit;background:rgba(0,0,0,.35);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:14px;outline:none;width:100%}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:6px;flex-wrap:wrap}
+  .btn-save{background:linear-gradient(135deg,#7c3aed,#db2777);color:#fff;padding:11px 22px}
+  .btn-save:disabled{opacity:.6}
+  .small-note{font-size:12px;color:var(--sub);margin-top:6px;line-height:1.5}
+  .header-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:#1f1f2e;border:1px solid var(--line);padding:12px 20px;border-radius:14px;font-size:14px;transition:.35s;z-index:60}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+
+<header>
+  <div class="logo"><div class="disc"></div><div>Music Mirror<small>카메라가 너를 보고, AI가 국내 노래 플레이리스트를 만들어줄게</small></div></div>
+  <div class="header-right">
+    <div class="status"><span class="dot" id="dot"></span><span id="statusText">서버 연결 중...</span></div>
+    <button class="btn btn-ghost" id="openSettings">⚙️ AI 설정</button>
+  </div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>📷 카메라</h2>
+    <div class="cam-wrap">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div class="face-badge" id="faceBadge"></div>
+      <div class="expr-bars" id="exprBars"></div>
+      <div class="cam-placeholder" id="camPlaceholder">
+        <div class="icon">🎥</div>
+        <div>카메라를 켜면 지금 모습을 분석할 수 있어요</div>
+        <button class="btn btn-ghost" id="startCam">카메라 켜기</button>
+      </div>
+      <div class="countdown" id="countdown">3</div>
+      <div class="scan" id="scan"></div>
+      <div class="flash" id="flash"></div>
+    </div>
+    <button class="btn btn-main" id="analyzeBtn" disabled>✨ 내 모습으로 플레이리스트 만들기</button>
+    <canvas id="canvas" hidden></canvas>
+  </section>
+
+  <section class="card">
+    <h2>🎧 오늘의 플레이리스트</h2>
+    <div id="result">
+      <div class="empty"><div class="big">🪞</div>카메라를 켜고 버튼을 누르면<br>표정 · 옷 · 분위기를 분석해서<br><b>지금 너에게 어울리는 국내 노래 플레이리스트</b>를 바로 틀어줄게요.</div>
+    </div>
+    <div class="chat" id="chat" style="display:none">
+      <div class="chips">
+        <button class="chip" data-q="다른 곡들로 플레이리스트를 새로 만들어줘">🔄 다른 곡으로</button>
+        <button class="chip" data-q="더 신나는 곡들로 바꿔줘">🔥 더 신나게</button>
+        <button class="chip" data-q="더 잔잔한 곡들로 바꿔줘">🌙 더 잔잔하게</button>
+        <button class="chip" data-q="발라드 위주로 바꿔줘">🎤 발라드</button>
+        <button class="chip" data-q="밴드·인디 곡 위주로 바꿔줘">🎸 밴드·인디</button>
+        <button class="chip" data-q="아이돌 곡 위주로 바꿔줘">💃 아이돌</button>
+      </div>
+      <div class="chat-input">
+        <input id="chatInput" placeholder="예) 공부할 때 들을 노래로 바꿔줘 / 90년대 감성으로" />
+        <button class="btn btn-send" id="chatSend">전송</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card llm">
+    <h2>🧠 AI가 고른 과정</h2>
+    <div class="process">
+      <div class="box"><h4>💭 단계별 추론 (CoT)</h4><div id="thinking" style="color:var(--sub)">아직 없음</div></div>
+      <div class="box"><h4>🔧 Function Calling → 유튜브 검색 기록</h4><div id="trace" style="color:var(--sub)">아직 없음</div></div>
+    </div>
+    <div class="llm-grid">
+      <div class="concept" data-c="backend"><b>Flask 백엔드 분리</b><span>HTML은 화면만, AI 호출은 파이썬 서버가 담당 → API 키 노출 없음</span></div>
+      <div class="concept" data-c="face"><b>얼굴·표정 정밀 측정 (face-api)</b><span>얼굴 수 확인 + 표정 7가지 + 랜드마크 68점으로 미소·눈·입·눈썹·고개를 3초간 평균 측정, 옷 색은 k-means</span></div>
+      <div class="concept" data-c="vision"><b>멀티모달 입력</b><span>웹캠 사진을 Responses API의 input_image로 전달</span></div>
+      <div class="concept" data-c="prompt"><b>프롬프트 엔지니어링</b><span>페르소나 + Few-shot + Counter-example 로 출력 품질 고정</span></div>
+      <div class="concept" data-c="cot"><b>CoT 단계별 추론</b><span>관찰 → 분위기 판단 → 검색 → 선택 → 설명 순서로 생각하고, "왜 이 노래일까?"로 근거를 보여줌</span></div>
+      <div class="concept" data-c="tool"><b>Function Calling</b><span>LLM이 search_songs 도구를 스스로 호출해 후보를 모음</span></div>
+      <div class="concept" data-c="youtube"><b>유튜브 검색 도구</b><span>AI가 떠올린 후보 곡을 search_youtube 로 하나씩 검색해 실제로 있는 곡인지 확인 (곡 제한 없음)</span></div>
+      <div class="concept" data-c="playlist"><b>유사곡 플레이리스트</b><span>대표곡을 기준으로 분위기·템포·장르가 비슷한 국내곡 5곡을 AI가 골라 모두 검색으로 확인</span></div>
+      <div class="concept" data-c="json"><b>Structured Outputs</b><span>JSON Schema로 항상 같은 형태의 답을 받음</span></div>
+      <div class="concept" data-c="multiturn"><b>멀티턴 (previous_response_id)</b><span>이전 대화를 기억해서 "다른 곡" 요청을 이해</span></div>
+      <div class="concept" data-c="halluc"><b>환각 방지</b><span>검색 결과에 실제로 나온 영상만 고르게 하고, 서버가 영상 ID·제목을 다시 검증</span></div>
+      <div class="concept" data-c="tts"><b>TTS</b><span>DJ 멘트를 gpt-4o-mini-tts로 읽어줌</span></div>
+      <div class="concept" data-c="image"><b>이미지 생성</b><span>무드에 맞는 앨범 커버를 gpt-image-1-mini로 생성</span></div>
+    </div>
+    <div class="stats">
+      <div class="stat">입력 토큰<b id="tIn">-</b></div>
+      <div class="stat">출력 토큰<b id="tOut">-</b></div>
+      <div class="stat">응답 시간<b id="tTime">-</b></div>
+      <div class="stat">도구 호출<b id="tTool">-</b></div>
+      <div class="stat">대화 턴<b id="tTurn">0</b></div>
+    </div>
+  </section>
+</main>
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3>⚙️ AI 설정</h3>
+    <p class="desc">API 키는 파이썬 서버 메모리에만 저장되고 파일로 남지 않아요. 서버를 다시 켜면 .env 키로 돌아가요.</p>
+    <div class="field">
+      <label>OpenAI API Key <em id="keySource">-</em></label>
+      <div class="key-row">
+        <input id="apiKey" type="password" placeholder="sk-... (비워두면 지금 키 유지)" autocomplete="off" />
+        <button class="btn btn-ghost" id="toggleKey" type="button">👁</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>모델 <em>추천 분석에 사용</em></label>
+      <select id="modelSelect"></select>
+      <div class="small-note">gpt-4o-mini가 가장 빠르고 저렴해요. gpt-5 계열은 더 정확하지만 느리고 temperature 설정이 빠져요.</div>
+    </div>
+    <div class="field">
+      <label>추천 기록 <em id="histCount">-</em></label>
+      <button class="btn btn-ghost" id="clearHistory" style="width:100%">🧹 추천 기록 초기화</button>
+      <div class="small-note">최근 추천한 60곡은 다시 나오지 않게 제외하고 있어요. 초기화하면 다시 나올 수 있어요.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="clearKey">.env 키로 되돌리기</button>
+      <button class="btn btn-ghost" id="closeSettings">닫기</button>
+      <button class="btn btn-save" id="saveSettings">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script src="/static/face-api/face-api.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const video = $("video"), canvas = $("canvas");
+let prevId = null, turns = 0, lastSnap = null, lastData = null, busy = false;
+let server = { ai: false };
+let ytPlayer = null, ytReady = false;
+window.onYouTubeIframeAPIReady = () => { ytReady = true; };
+
+function toast(msg, ms = 2600) {
+  const t = $("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("show"), ms);
+}
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function markUsed(...n) { n.forEach(x => document.querySelector(`.concept[data-c="${x}"]`)?.classList.add("used")); }
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+function hueOf(str) { let h = 0; for (const c of str) h = (h * 31 + c.charCodeAt(0)) % 360; return h; }
+
+async function api(path, body) {
+  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!res.ok) { let m = `서버 오류 (${res.status})`; try { m = (await res.json()).error || m; } catch (e) {} throw new Error(m); }
+  return res;
+}
+
+/* ---------- 최근 추천 기록 (같은 곡 반복 방지) ---------- */
+const HIST_KEY = "mm_recent_songs";
+function loadHistory() { try { return JSON.parse(localStorage.getItem(HIST_KEY) || "[]"); } catch (e) { return []; } }
+let recentSongs = loadHistory();
+function rememberSongs(list) {
+  for (const s of list || []) {
+    if (!s || !s.title) continue;
+    recentSongs = recentSongs.filter(x => !(x.title === s.title && x.artist === s.artist));
+    recentSongs.push({ title: s.title, artist: s.artist });
+  }
+  recentSongs = recentSongs.slice(-60);
+  try { localStorage.setItem(HIST_KEY, JSON.stringify(recentSongs)); } catch (e) {}
+}
+
+/* ---------- 서버 상태 ---------- */
+function applyStatus(s) {
+  server = s;
+  $("dot").classList.toggle("on", s.ai);
+  $("statusText").textContent = s.ai
+    ? `AI 모드 · ${s.model} · 유튜브 검색`
+    : `데모 모드 (API 키 없음) · 유튜브 검색`;
+}
+fetch("/api/status").then(r => r.json()).then(applyStatus)
+  .catch(() => { $("statusText").textContent = "서버 연결 실패 - python app.py 로 실행하세요"; });
+
+/* ---------- AI 설정 (API 키 / 모델) ---------- */
+$("openSettings").onclick = () => {
+  $("apiKey").value = "";
+  $("keySource").textContent = server.key_source === "page" ? "페이지에서 입력한 키 사용 중"
+    : server.key_source === "env" ? ".env 키 사용 중" : "키 없음 (데모 모드)";
+  $("modelSelect").innerHTML = (server.models || [server.model]).map(m =>
+    `<option value="${esc(m)}" ${m === server.model ? "selected" : ""}>${esc(m)}</option>`).join("");
+  $("histCount").textContent = `최근 ${recentSongs.length}곡 제외 중`;
+  $("modal").classList.add("show");
+};
+$("clearHistory").onclick = () => {
+  recentSongs = []; try { localStorage.removeItem(HIST_KEY); } catch (e) {}
+  $("histCount").textContent = "최근 0곡 제외 중"; toast("추천 기록을 지웠어요");
+};
+$("closeSettings").onclick = () => $("modal").classList.remove("show");
+$("modal").onclick = (e) => { if (e.target.id === "modal") $("modal").classList.remove("show"); };
+$("toggleKey").onclick = () => { const k = $("apiKey"); k.type = k.type === "password" ? "text" : "password"; };
+async function saveConfig(body, btn) {
+  const label = btn.textContent;
+  btn.disabled = true; btn.innerHTML = `<span class="spinner"></span>확인 중`;
+  try {
+    applyStatus(await (await api("/api/config", body)).json());
+    $("modal").classList.remove("show");
+    prevId = null; turns = 0;   // 모델이 바뀌면 이전 대화는 새로 시작
+    toast(server.ai ? `✨ AI 모드 · ${server.model}` : "데모 모드로 동작해요");
+  } catch (e) { toast("⚠ " + e.message, 5000); }
+  finally { btn.disabled = false; btn.textContent = label; }
+}
+$("saveSettings").onclick = () => saveConfig({ api_key: $("apiKey").value.trim(), model: $("modelSelect").value }, $("saveSettings"));
+$("clearKey").onclick = () => saveConfig({ clear_key: true }, $("clearKey"));
+
+/* ---------- 얼굴·표정 정밀 측정 (face-api, 브라우저에서 실행) ---------- */
+const EXPR_KO = { happy: "😄 행복", sad: "😢 슬픔", angry: "😠 화남", surprised: "😲 놀람", neutral: "😐 무표정", fearful: "😨 긴장", disgusted: "😒 언짢음" };
+let faceReady = false, faceState = { count: 0 }, faceLoopOn = false, lastBox = null, lastFace = null;
+async function loadFaceModels() {
+  if (typeof faceapi === "undefined") { console.warn("face-api 없음"); return; }
+  try {
+    const url = "/static/face-api/model";
+    await faceapi.nets.tinyFaceDetector.loadFromUri(url);
+    await faceapi.nets.faceLandmark68TinyNet.loadFromUri(url);   // 얼굴 랜드마크 68개 점
+    await faceapi.nets.faceExpressionNet.loadFromUri(url);       // 표정 7가지
+    faceReady = true;
+  } catch (e) { console.warn("face-api 모델 로드 실패", e); }
+}
+const faceModelsLoading = loadFaceModels();
+// 웹캠은 얼굴이 크게 잡히는 경우가 많아서 inputSize 224 가 가장 안정적 (테스트: 320은 가까운 얼굴을 놓침)
+const FACE_INPUT = 224, FACE_MIN_SCORE = 0.4;
+const detectorOpts = () => new faceapi.TinyFaceDetectorOptions({ inputSize: FACE_INPUT, scoreThreshold: FACE_MIN_SCORE });
+const detectFaces = (src) => faceapi.detectAllFaces(src, detectorOpts()).withFaceLandmarks(true).withFaceExpressions();
+
+const clamp = (v) => Math.max(0, Math.min(100, Math.round(v)));
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const mid = (pts) => ({ x: pts.reduce((s, p) => s + p.x, 0) / pts.length, y: pts.reduce((s, p) => s + p.y, 0) / pts.length });
+
+// 랜드마크 68점으로 얼굴 수치 계산 (0~100 점수로 정규화)
+function faceMetrics(det) {
+  const p = det.landmarks.positions, happy = det.expressions.happy || 0;
+  const faceW = dist(p[0], p[16]), faceH = dist(p[27], p[8]);
+  const mouthW = dist(p[48], p[54]);
+  const mouthOpen = dist(p[62], p[66]) / mouthW;                                   // 입 안쪽 위아래 / 입 너비
+  const cornerLift = ((p[51].y + p[57].y) / 2 - (p[48].y + p[54].y) / 2) / faceH;   // 입꼬리가 올라간 정도
+  const smileGeom = clamp((mouthW / faceW - 0.36) / 0.16 * 60 + cornerLift / 0.08 * 40);
+  const ear = (i) => (dist(p[i + 1], p[i + 5]) + dist(p[i + 2], p[i + 4])) / (2 * dist(p[i], p[i + 3]));  // 눈 세로/가로 비율
+  const brow = ((dist(p[19], p[37]) + dist(p[24], p[44])) / 2) / faceH;
+  const eyeL = mid(p.slice(36, 42)), eyeR = mid(p.slice(42, 48));
+  const tilt = Math.atan2(eyeR.y - eyeL.y, eyeR.x - eyeL.x) * 180 / Math.PI;
+  const turn = ((p[30].x - p[0].x) / (p[16].x - p[0].x) - 0.5) * 200;
+  return {
+    smile: clamp(smileGeom * 0.5 + happy * 100 * 0.5),        // 입 모양 + 표정 모델 '행복' 확률을 섞음
+    mouth_open: clamp(mouthOpen / 0.45 * 100),
+    eye_open: clamp(((ear(36) + ear(42)) / 2 - 0.12) / 0.25 * 100),
+    brow_raise: clamp((brow - 0.08) / 0.16 * 100),
+    head_tilt: Math.round(tilt),
+    head_turn: Math.round(turn),
+  };
+}
+
+function summarize(dets) {
+  if (dets.length !== 1) return { count: dets.length };
+  const ex = dets[0].expressions;
+  const scores = {}; for (const k of Object.keys(EXPR_KO)) scores[k] = +(ex[k] || 0).toFixed(3);
+  const top = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
+  return { count: 1, expression: top[0], confidence: top[1], scores, metrics: faceMetrics(dets[0]), box: dets[0].detection.box };
+}
+
+// 여러 프레임 결과를 평균 → 한 장보다 훨씬 안정적인 측정
+function aggregate(samples, total) {
+  const ok = samples.filter(s => s.count === 1);
+  if (!total) return null;
+  const multi = samples.filter(s => s.count > 1).length;
+  if (multi > total * 0.3) throw new Error("측정하는 동안 여러 명이 보였어요. 한 명만 화면에 나와 주세요.");
+  if (ok.length < 2 || ok.length < total * 0.4) throw new Error("측정하는 동안 얼굴이 잘 안 보였어요. 정면을 보고 다시 찍어 주세요.");
+  const avg = (get) => ok.reduce((s, x) => s + get(x), 0) / ok.length;
+  const scores = {}; for (const k of Object.keys(EXPR_KO)) scores[k] = +avg(x => x.scores[k]).toFixed(3);
+  const top = Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
+  const metrics = {}; for (const k of Object.keys(ok[0].metrics)) metrics[k] = Math.round(avg(x => x.metrics[k]));
+  lastBox = ok[ok.length - 1].box;
+  return {
+    count: 1, expression: top, scores, metrics, samples: ok.length,
+    stability: clamp(ok.filter(x => x.expression === top).length / ok.length * 100),   // 같은 표정이 유지된 비율
+  };
+}
+
+// 최소 ms 동안, 그리고 프레임이 minFrames 개 모일 때까지 측정 (느린 PC는 최대 maxMs 까지)
+async function measureDuring(ms, minFrames = 6, maxMs = 5000) {
+  const samples = [], t0 = performance.now();
+  while (performance.now() - t0 < ms || (samples.length < minFrames && performance.now() - t0 < maxMs)) {
+    if (video.readyState >= 2) samples.push(summarize(await detectFaces(video)));
+    await sleep(60);
+  }
+  return aggregate(samples, samples.length);
+}
+
+// 화면 밝기 + 옷 영역 주요색 3개 (k-means)
+function sceneAnalysis(cv, box) {
+  const ctx = cv.getContext("2d"), W = cv.width, H = cv.height;
+  const all = ctx.getImageData(0, 0, W, H).data;
+  let lum = 0, n = 0;
+  for (let i = 0; i < all.length; i += 40) { lum += 0.299 * all[i] + 0.587 * all[i + 1] + 0.114 * all[i + 2]; n++; }
+  const sx = W / (video.videoWidth || W), sy = H / (video.videoHeight || H);
+  let x0, y0, x1, y1;
+  if (box) {
+    x0 = (box.x - box.width * 0.5) * sx; x1 = (box.x + box.width * 1.5) * sx;
+    y0 = (box.y + box.height * 1.15) * sy; y1 = (box.y + box.height * 2.8) * sy;
+  } else { x0 = W * 0.25; x1 = W * 0.75; y0 = H * 0.65; y1 = H; }
+  x0 = Math.max(0, x0 | 0); y0 = Math.max(0, y0 | 0); x1 = Math.min(W, x1 | 0); y1 = Math.min(H, y1 | 0);
+  if (y1 - y0 < 10 || x1 - x0 < 10) { y0 = (H * 0.7) | 0; y1 = H; x0 = (W * 0.25) | 0; x1 = (W * 0.75) | 0; }
+  const reg = ctx.getImageData(x0, y0, x1 - x0, y1 - y0).data, px = [];
+  for (let i = 0; i < reg.length; i += 32) px.push([reg[i], reg[i + 1], reg[i + 2]]);
+  let cents = [px[0], px[(px.length / 2) | 0], px[px.length - 1]].map(c => [...c]), assign = [];
+  for (let it = 0; it < 10; it++) {
+    assign = px.map(p => { let b = 0, bd = 1e9; cents.forEach((c, j) => { const d = (p[0]-c[0])**2 + (p[1]-c[1])**2 + (p[2]-c[2])**2; if (d < bd) { bd = d; b = j; } }); return b; });
+    cents = cents.map((c, j) => { const m = px.filter((_, i) => assign[i] === j); return m.length ? [0, 1, 2].map(k => m.reduce((s, p) => s + p[k], 0) / m.length) : c; });
+  }
+  const hex = (c) => "#" + c.map(v => Math.round(v).toString(16).padStart(2, "0")).join("");
+  const colors = cents.map((c, j) => ({ hex: hex(c), pct: Math.round(assign.filter(a => a === j).length / assign.length * 100) }))
+    .filter(c => c.pct > 0).sort((a, b) => b.pct - a.pct);
+  return { brightness: clamp(lum / n / 255 * 100), colors };
+}
+
+async function faceLoop() {
+  if (faceLoopOn) return; faceLoopOn = true;
+  await faceModelsLoading;
+  const ov = $("overlay"), badge = $("faceBadge"), bars = $("exprBars");
+  if (!faceReady) { $("analyzeBtn").disabled = false; return; }   // 인식기를 못 쓰면 AI 확인만 사용
+  markUsed("face");
+  badge.style.display = "block";
+  const tick = async () => {
+    if (video.readyState >= 2 && !busy) {
+      const dets = await detectFaces(video);
+      faceState = summarize(dets);
+      ov.width = video.videoWidth; ov.height = video.videoHeight;
+      const ctx = ov.getContext("2d"); ctx.clearRect(0, 0, ov.width, ov.height);
+      dets.forEach(d => {
+        const b = d.detection.box;
+        ctx.strokeStyle = dets.length === 1 ? "#a78bfa" : "#ef4444"; ctx.lineWidth = 4;
+        ctx.beginPath(); ctx.roundRect(b.x, b.y, b.width, b.height, 18); ctx.stroke();
+        if (dets.length === 1) {   // 랜드마크 점 표시
+          ctx.fillStyle = "rgba(244,114,182,.9)";
+          d.landmarks.positions.forEach(pt => { ctx.beginPath(); ctx.arc(pt.x, pt.y, 2.2, 0, 7); ctx.fill(); });
+        }
+      });
+      if (faceState.count === 1) {
+        const m = faceState.metrics;
+        badge.className = "face-badge";
+        badge.textContent = `${EXPR_KO[faceState.expression]} ${Math.round(faceState.confidence * 100)}%`;
+        bars.style.display = "flex";
+        const row = (label, v) => `<div class="expr-row"><span>${label}</span><i><b style="width:${v}%"></b></i></div>`;
+        bars.innerHTML = Object.entries(faceState.scores).sort((a, b) => b[1] - a[1]).slice(0, 3)
+          .map(([k, v]) => row(EXPR_KO[k].split(" ")[1], v * 100)).join("")
+          + `<div style="height:1px;background:rgba(255,255,255,.15);margin:3px 0"></div>`
+          + row("미소", m.smile) + row("눈 크기", m.eye_open) + row("입 벌림", m.mouth_open);
+      } else {
+        badge.className = "face-badge warn";
+        badge.textContent = faceState.count === 0 ? "🙈 얼굴이 안 보여요" : `👥 ${faceState.count}명이 보여요 · 한 명만 나와 주세요`;
+        bars.style.display = "none";
+      }
+      $("analyzeBtn").disabled = busy || faceState.count !== 1;
+    }
+    setTimeout(tick, 200);
+  };
+  tick();
+}
+
+/* ---------- 측정 리포트 ---------- */
+function renderMeasure(f) {
+  if (!f || !f.metrics) return "";
+  const m = f.metrics, sc = f.scene || {};
+  const bar = (label, v, hint) => `<div class="m-item"><div class="m-top"><span>${label}</span><b>${v}</b></div><i><b style="width:${v}%"></b></i><em>${hint}</em></div>`;
+  const lv = (v) => v < 20 ? "매우 낮음" : v < 40 ? "낮음" : v < 60 ? "보통" : v < 80 ? "높음" : "매우 높음";
+  const exprs = Object.entries(f.scores).sort((a, b) => b[1] - a[1]).slice(0, 3)
+    .map(([k, v]) => `${EXPR_KO[k]} ${Math.round(v * 100)}%`).join(" · ");
+  return `
+    <details class="measure">
+      <summary>📏 정밀 측정 리포트 <span>${f.samples}프레임 평균 · 표정 안정도 ${f.stability}%</span></summary>
+      <div class="m-expr">${exprs}</div>
+      <div class="m-grid">
+        ${bar("미소 강도", m.smile, lv(m.smile))}
+        ${bar("눈 크기", m.eye_open, lv(m.eye_open))}
+        ${bar("입 벌림", m.mouth_open, lv(m.mouth_open))}
+        ${bar("눈썹 올림", m.brow_raise, lv(m.brow_raise))}
+        ${bar("화면 밝기", sc.brightness ?? 0, lv(sc.brightness ?? 0))}
+        <div class="m-item"><div class="m-top"><span>고개</span><b>${m.head_tilt}°</b></div>
+          <em>${Math.abs(m.head_tilt) < 5 ? "똑바로" : "갸웃"} · ${Math.abs(m.head_turn) < 25 ? "정면" : "옆을 봄"}</em></div>
+      </div>
+      ${(sc.colors || []).length ? `<div class="m-colors">👕 옷 주요색 ${sc.colors.map(c => `<span><i style="background:${c.hex}"></i>${c.hex} ${c.pct}%</span>`).join("")}</div>` : ""}
+    </details>`;
+}
+
+/* ---------- 카메라 ---------- */
+$("startCam").onclick = async () => {
+  try {
+    video.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 960, facingMode: "user" }, audio: false });
+    $("camPlaceholder").style.display = "none";
+    video.onloadeddata = () => faceLoop();
+  } catch (e) { toast("카메라를 열 수 없어요. 브라우저 권한을 확인해 주세요.", 4500); }
+};
+function capture() {
+  const w = 640, h = Math.round(640 * video.videoHeight / video.videoWidth) || 480;
+  canvas.width = w; canvas.height = h;
+  canvas.getContext("2d").drawImage(video, 0, 0, w, h);
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
+async function countdown() {
+  const el = $("countdown"); el.style.display = "flex";
+  for (const n of [3, 2, 1]) { el.textContent = n; await sleep(700); }
+  el.style.display = "none";
+  const f = $("flash"); f.classList.remove("go"); void f.offsetWidth; f.classList.add("go");
+}
+
+/* ---------- 추천 요청 ---------- */
+async function recommend(body) {
+  const out = await (await api("/api/recommend", { ...body, previous_response_id: prevId, exclude: recentSongs })).json();
+  if (out.data) rememberSongs([out.data.song, ...(out.data.playlist || [])]);
+  if (out.response_id) { prevId = out.response_id; turns++; }
+  $("tIn").textContent = out.usage?.input ?? "-";
+  $("tOut").textContent = out.usage?.output ?? "-";
+  $("tTime").textContent = out.usage ? out.elapsed + "s" : "-";
+  $("tTool").textContent = (out.trace || []).length + "회";
+  $("tTurn").textContent = turns;
+  renderProcess(out.data, out.trace || []);
+  markUsed("backend", "halluc", "cot");
+  if ((out.data?.playlist || []).length) markUsed("playlist");
+  if ((out.trace || []).some(t => t.tool === "search_youtube")) markUsed("youtube");
+  if (out.usage) { markUsed("prompt", "tool", "json"); if (body.image) markUsed("vision"); if (turns > 1) markUsed("multiturn"); }
+  return out.data;
+}
+
+$("analyzeBtn").onclick = async () => {
+  if (busy) return;
+  busy = true; $("analyzeBtn").disabled = true;
+  try {
+    // 카운트다운 3초 동안 여러 프레임을 측정해서 평균을 낸다
+    const [face0] = await Promise.all([faceReady ? measureDuring(2100) : Promise.resolve(null), countdown()]);
+    lastSnap = capture();
+    const face = face0 ? { ...face0, scene: sceneAnalysis(canvas, lastBox) } : null;
+    lastFace = face;
+    $("scan").style.display = "block";
+    $("result").innerHTML = `<div class="empty"><span class="spinner"></span>모습을 보고 노래를 고르는 중...</div>`;
+    prevId = null; turns = 0;
+    const data = await recommend({ image: lastSnap, face, text: "이 사진 속 사람에게 지금 어울리는 국내 노래로 대표곡 1곡과 비슷한 곡들의 플레이리스트를 만들어줘." });
+    renderResult(data);
+    $("chat").style.display = server.ai ? "block" : "none";
+    speak(data.dj_comment);
+  } catch (e) {
+    $("result").innerHTML = `<div class="empty"><div class="big">⚠️</div>${esc(e.message)}</div>`;
+  } finally {
+    $("scan").style.display = "none";
+    busy = false; $("analyzeBtn").disabled = faceReady && faceState.count !== 1;
+  }
+};
+
+async function followUp(q) {
+  if (!q || busy) return;
+  if (!prevId) return toast("먼저 분석을 한 번 해주세요");
+  busy = true; $("chatInput").value = "";
+  stopVideo();
+  $("result").innerHTML = `<div class="empty"><span class="spinner"></span>"${esc(q)}" 반영해서 다시 고르는 중...</div>`;
+  try {
+    const data = await recommend({ text: q + " (이전 사진 분석은 유지하고, 이전에 넣은 곡은 빼고 대표곡 1곡 + 비슷한 곡 플레이리스트로)" });
+    renderResult(data);
+    speak(data.dj_comment);
+  } catch (e) {
+    toast("⚠ " + e.message, 4000);
+    if (lastData) renderResult(lastData);
+  } finally { busy = false; }
+}
+$("chatSend").onclick = () => followUp($("chatInput").value.trim());
+$("chatInput").onkeydown = (e) => { if (e.key === "Enter" && !e.isComposing) followUp(e.target.value.trim()); };
+document.querySelectorAll(".chip").forEach(c => c.onclick = () => followUp(c.dataset.q));
+
+/* ---------- 결과 화면 ---------- */
+let tracks = [];   // 지금 플레이리스트 (대표곡 + 비슷한 곡)
+
+function renderResult(d) {
+  lastData = d;
+  const a = d.appearance || {}, s = d.song || {};
+  const colors = (a.colors || []).filter(c => /^#[0-9a-f]{3,8}$/i.test(c)).slice(0, 4);
+  tracks = [s, ...(d.playlist || [])].filter(t => t && t.title);
+  const playable = tracks.filter(t => (t.video_ids || []).length);
+  const thumbId = (s.video_ids || [])[0];
+  const h = hueOf(s.title + s.artist);
+  const thumb = thumbId ? `url(https://i.ytimg.com/vi/${thumbId}/hqdefault.jpg)` : `linear-gradient(135deg,hsl(${h},75%,55%),hsl(${(h + 60) % 360},70%,35%))`;
+  const ytList = playable.map(t => t.video_ids[0]).join(",");
+
+  $("result").innerHTML = `
+    <div class="profile">
+      ${lastSnap ? `<img class="snap" src="${lastSnap}" alt="">` : ""}
+      <div>
+        <h3>${esc(a.vibe)}</h3>
+        <div class="desc">😶 ${esc(a.expression)}<br>👕 ${esc(a.outfit)} ${colors.map(c => `<span class="sw" style="background:${c}"></span>`).join(" ")}</div>
+        <div class="tags">${(d.mood_keywords || []).map(k => `<span class="tag">#${esc(k)}</span>`).join("")}</div>
+      </div>
+    </div>
+    <div class="player" id="player">
+      <div class="poster" id="poster" style="background-image:${thumb}">
+        <div class="play-big">▶</div>
+        <div class="hint">${playable.length ? `플레이리스트 ${playable.length}곡 이어서 재생` : "영상을 못 찾았어요 · 유튜브에서 보기"}</div>
+      </div>
+    </div>
+    <div class="now" id="nowPlaying"></div>
+    <div class="pl">
+      <div class="pl-head">
+        <div><div class="pl-label">PLAYLIST · ${tracks.length}곡</div><div class="pl-title">${esc(d.playlist_title || a.vibe || "오늘의 플레이리스트")}</div></div>
+        <div class="pl-btns">
+          ${playable.length ? `<button class="btn pl-play" id="playAll">▶ 전체 재생</button>` : ""}
+          ${playable.length > 1 ? `<a class="yt-link" href="https://www.youtube.com/watch_videos?video_ids=${ytList}" target="_blank" rel="noopener">↗ 유튜브 재생목록</a>` : ""}
+        </div>
+      </div>
+      <div class="pl-list">
+        ${tracks.map((t, i) => `
+          <div class="track ${i === 0 ? "main" : ""}" data-i="${i}" style="animation-delay:${i * 0.06}s">
+            <div class="t-no">${i === 0 ? "★" : i + 1}</div>
+            <div class="t-thumb" style="background-image:${(t.video_ids || [])[0] ? `url(https://i.ytimg.com/vi/${t.video_ids[0]}/default.jpg)` : "none"}"></div>
+            <div class="t-info">
+              <div class="t-title">${esc(t.title)} <span class="t-artist">· ${esc(t.artist)}</span></div>
+              <div class="t-sub">${i === 0 ? `<b>대표곡</b> · ${esc(t.reason)}` : `≈ ${esc(t.similar_to_main)}`}</div>
+              <div class="meta">
+                ${t.genre && t.genre !== "-" ? `<span class="mini">${esc(t.genre)}</span>` : ""}
+                ${t.verified ? `<span class="mini ok">✓ 실제 영상 확인</span>` : `<span class="mini no">⚠ 확인 안 됨</span>`}
+              </div>
+            </div>
+            <div class="t-actions">
+              ${(t.video_ids || []).length ? `<button class="t-play" data-i="${i}" title="이 곡 재생">▶</button>` : ""}
+              <a class="t-yt" href="${esc(t.youtube)}" target="_blank" rel="noopener" title="유튜브에서 보기">↗</a>
+            </div>
+          </div>`).join("")}
+      </div>
+    </div>
+    <div class="side-btns" style="flex-direction:row;margin-top:12px">
+      ${server.ai ? `<button class="yt-link" id="coverBtn" style="cursor:pointer;font-family:inherit;background:rgba(167,139,250,.15);color:#c4b5fd;border-color:rgba(167,139,250,.3)">🎨 앨범커버 만들기</button>` : ""}
+    </div>
+    ${renderWhy(d.why, s)}
+    ${renderMeasure(lastFace)}
+    <div class="dj"><button class="btn play" id="replay" title="DJ 멘트 듣기">▶</button><div>${esc(d.dj_comment)}</div></div>`;
+
+  $("poster").onclick = () => playable.length ? playPlaylist(0) : window.open(s.youtube, "_blank");
+  const pa = $("playAll"); if (pa) pa.onclick = () => playPlaylist(0);
+  document.querySelectorAll(".t-play").forEach(b => b.onclick = () => playPlaylist(+b.dataset.i));
+  $("replay").onclick = () => server.ai ? speak(d.dj_comment) : toast("TTS는 AI 모드에서만 돼요");
+  const cb = $("coverBtn"); if (cb) cb.onclick = () => makeCover(d, cb);
+}
+
+function renderWhy(w, s) {
+  if (!w) return "";
+  const score = Math.max(0, Math.min(100, parseInt(w.match_score) || 0));
+  const obs = (w.observations || []).map(o => `<li>${esc(o)}</li>`).join("");
+  const cmp = (w.compared || []).map(c => `<div><b>${esc(c.artist)} - ${esc(c.title)}</b><br><span>→ ${esc(c.why_not)}</span></div>`).join("");
+  return `
+    <div class="why">
+      <div class="why-head">
+        <b>🧠 왜 이 대표곡일까?</b>
+        <div class="score">어울림<div class="ring" style="--p:${score}"><span>${score}</span></div></div>
+      </div>
+      <div class="why-steps">
+        <div class="why-step"><div class="ic">👀</div><div><h5>사진에서 본 것</h5><ul>${obs}</ul></div></div>
+        <div class="why-step"><div class="ic">🎭</div><div><h5>그래서 지금 분위기는</h5><p>${esc(w.mood_link)}</p></div></div>
+        <div class="why-step"><div class="ic">🎵</div><div><h5>대표곡이 맞는 이유</h5><p>${esc(w.song_match)}</p></div></div>
+        ${cmp ? `<div class="why-step"><div class="ic">⚖️</div><div><h5>다른 후보 대신 이 곡을 대표곡으로 고른 이유</h5><div class="cmp">${cmp}</div></div></div>` : ""}
+      </div>
+    </div>`;
+}
+
+function renderProcess(d, trace) {
+  $("thinking").innerHTML = (d.thinking || []).length
+    ? `<ol>${d.thinking.map(t => `<li>${esc(t)}</li>`).join("")}</ol>` : "없음";
+  $("trace").innerHTML = trace.length ? trace.map(t => `
+    <div class="tool"><code>${esc(t.tool)}("${esc(t.args.query)}")</code> → ${t.count}개 영상
+      <div class="found">${t.titles.slice(0, 4).map(esc).join(" · ")}${t.titles.length > 4 ? " ..." : ""}</div></div>`).join("") : "없음";
+}
+
+/* ---------- 플레이리스트 재생 ---------- */
+// 곡마다 영상 후보가 여러 개 있어서, 퍼가기 막힌 영상이면 같은 곡의 다음 영상 → 그래도 안 되면 다음 곡
+let cur = { track: 0, alt: 0 };
+function highlight() {
+  document.querySelectorAll(".track").forEach(el => el.classList.toggle("playing", +el.dataset.i === cur.track));
+  const t = tracks[cur.track];
+  const np = $("nowPlaying");
+  if (np && t) np.innerHTML = `<span class="eq"><i></i><i></i><i></i></span> 지금 재생 중 · <b>${esc(t.title)}</b> · ${esc(t.artist)} <span>(${cur.track + 1}/${tracks.length})</span>`;
+}
+function loadTrack(i, alt = 0) {
+  while (i < tracks.length && !(tracks[i].video_ids || []).length) i++;
+  if (i >= tracks.length) { toast("플레이리스트를 다 들었어요 🎧"); return; }
+  cur = { track: i, alt };
+  ytPlayer.loadVideoById(tracks[i].video_ids[alt]);
+  highlight();
+}
+function playPlaylist(start = 0) {
+  if (!ytReady) return toast("유튜브 플레이어 준비 중이에요. 잠시 후 다시 눌러주세요");
+  if (currentAudio) currentAudio.pause();
+  if (ytPlayer && ytPlayer.loadVideoById) { loadTrack(start); return; }
+  $("player").innerHTML = `<div id="ytFrame"></div>`;
+  ytPlayer = new YT.Player("ytFrame", {
+    playerVars: { autoplay: 1, rel: 0, playsinline: 1 },
+    events: {
+      onReady: () => loadTrack(start),
+      onStateChange: (e) => { if (e.data === YT.PlayerState.ENDED) loadTrack(cur.track + 1); },   // 끝나면 다음 곡
+      onError: () => {
+        const ids = tracks[cur.track].video_ids || [];
+        if (cur.alt + 1 < ids.length) loadTrack(cur.track, cur.alt + 1);
+        else { toast(`'${tracks[cur.track].title}' 은 여기서 재생이 안 돼서 다음 곡으로 넘어가요`); loadTrack(cur.track + 1); }
+      },
+    },
+  });
+}
+function stopVideo() { try { ytPlayer?.destroy(); } catch (e) {} ytPlayer = null; cur = { track: 0, alt: 0 }; }
+
+/* ---------- TTS ---------- */
+let currentAudio = null;
+async function speak(text) {
+  if (!server.ai || !text) return;
+  try {
+    const blob = await (await api("/api/tts", { text })).blob();
+    if (currentAudio) currentAudio.pause();
+    currentAudio = new Audio(URL.createObjectURL(blob));
+    await currentAudio.play();
+    markUsed("tts");
+  } catch (e) { console.warn(e); }
+}
+
+/* ---------- 앨범 커버 ---------- */
+async function makeCover(d, btn) {
+  btn.disabled = true; btn.innerHTML = `<span class="spinner"></span>그리는 중`;
+  try {
+    const out = await (await api("/api/cover", { vibe: d.appearance.vibe, keywords: d.mood_keywords, colors: d.appearance.colors })).json();
+    const poster = $("poster");
+    if (poster) poster.style.backgroundImage = `url(${out.image})`;
+    const snap = document.querySelector(".snap"); if (snap) { snap.src = out.image; snap.style.transform = "none"; }
+    markUsed("image");
+    btn.textContent = "✓ 커버 완성";
+  } catch (e) { toast("⚠ " + e.message, 4000); btn.disabled = false; btn.textContent = "🎨 앨범커버 만들기"; }
+}
+</script>
+</body>
+</html>
